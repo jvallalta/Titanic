@@ -1,0 +1,147 @@
+---
+title: "Titanic"
+author: "Juan Franscico Vallalta"
+date: "6 de enero de 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Práctica 2
+
+Código R utilizado para la realización de la práctica
+
+```{r}
+# Cargamos los paquetes R que vamos a usar
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(VIM)
+library(tidyr)
+library(naniar)
+
+# Cargamos el juego de dagos train
+titanic <- read.csv('train.csv', stringsAsFactors = FALSE)
+head(titanic)
+
+# Descartamos las variables PassengerId, Name y Ticket
+titanic <- titanic %>% select(-PassengerId,-Name, -Ticket)
+head(titanic)
+
+#Creamos una nueva variable tamaño de la familia
+titanic <- titanic %>% mutate(TamFamilia = SibSp + Parch +1)
+head(titanic)
+
+# Estadísticas de valores vacíos
+colSums(is.na(titanic))
+colSums(titanic=="")
+colSums(titanic=="?")
+
+#Asignamos NA a Cabin y Embarked
+titanic$Cabin[titanic$Cabin==""]<-NA
+titanic$Embarked[titanic$Embarked==""]<-NA
+colSums(is.na(titanic))
+
+#Visualización valores perdidos
+aggr(titanic, numbers=TRUE, sortVars=TRUE, labels=names(titanic), cex.axis=.7, gap=3, ylab=c("Datos perdidos","Patrón"))
+
+# Imputación de valores mediante la función kNN() del paquete VIM 
+titanic<-titanic %>% select(-Cabin)
+titanic$Age <- kNN(titanic)$Age 
+titanic$Embarked <- kNN(titanic)$Embarked 
+colSums(is.na(titanic))
+
+#Valores extremos
+#Diagrama de cajas Age
+Age.bp<-boxplot(titanic$Age, main='Edad')
+Age.bp$out
+
+#Valores extremos
+#Diagrama de cajas SibSp
+SibSp.bp<-boxplot(titanic$SibSp, main='SibSp')
+SibSp.bp$out
+
+#Valores extremos
+#Diagrama de cajas Parch
+Parch.bp<-boxplot(titanic$Parch, main='Parch')
+Parch.bp$out
+
+#Valores extremos
+#Diagrama de cajas Fare
+Fare.bp<-boxplot(titanic$Fare, main='Precio ticket')
+Fare.bp$out
+
+#Valores extremos
+#Diagrama de cajas Fare
+TamFamilia.bp<-boxplot(titanic$TamFamilia, main='Tamaño Familia')
+TamFamilia.bp$out
+
+#Selección variables análisis
+titanic_ana <- titanic %>% select(Survived, Pclass, Sex, Age, Embarked, TamFamilia)
+head(titanic_ana)
+
+#Convertimos a factor
+titanic_ana$Pclass <- as.factor(titanic_ana$Pclass)
+titanic_ana$Sex <- as.factor(titanic_ana$Sex)
+titanic_ana$Embarked <- as.factor(titanic_ana$Embarked)
+head(titanic_ana)
+
+#Estructura de los datos
+str(titanic_ana)
+
+#Estadísticas basicas
+summary(titanic_ana)
+
+#Análisis estadistico inferencial
+#¿Existen diferencias significativas en la supervivencia por tipo de pasaje?´
+tabla<-table(titanic_ana$Pclass, titanic_ana$Survived)
+tabla
+chisq.test(tabla)
+
+#¿Existen diferencias significativas en la supervivencia por sexo?´
+tabla<-table(titanic_ana$Sex, titanic_ana$Survived)
+tabla
+chisq.test(tabla)
+
+#¿Existen diferencias significativas en la supervivencia por puerto de embarque?
+tabla<-table(titanic_ana$Embarked, titanic_ana$Survived)
+tabla
+chisq.test(tabla)
+
+#Test normalidad edad
+shapiro.test(titanic_ana$Age)
+
+#Test de homocedasticidad
+fligner.test(Age~Survived, data=titanic_ana)
+
+#Constraste de hipótesis
+wilcox.test(Age~Survived, data=titanic_ana)
+
+#Test normalidad edad
+shapiro.test(titanic_ana$TamFamilia)
+
+#Test de homocedasticidad
+fligner.test(TamFamilia~Survived, data=titanic_ana)
+
+#Constraste de hipótesis
+wilcox.test(TamFamilia~Survived, data=titanic_ana)
+
+#Modelo de regresión logística
+modelo = glm(Survived~., data=titanic_ana, family="binomial")
+summary(modelo)
+
+#Comparación de modelos
+modelo1 = glm(Survived~Pclass, data=titanic_ana, family="binomial")
+modelo2 = glm(Survived~Pclass+Sex, data=titanic_ana, family="binomial")
+modelo3 = glm(Survived~Pclass+Sex+Age, data=titanic_ana, family="binomial")
+modelo4 = glm(Survived~Pclass+Sex+Age+TamFamilia, data=titanic_ana, family="binomial")
+modelo5 = glm(Survived~Pclass+Sex+Age+TamFamilia+Embarked, data=titanic_ana, family="binomial")
+modelo1$aic
+modelo2$aic
+modelo3$aic
+modelo4$aic
+modelo5$aic
+
+```
